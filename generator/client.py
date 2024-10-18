@@ -5,6 +5,8 @@ from time import sleep
 import json
 from random import randint
 
+# based on https://habr.com/ru/companies/alfa/articles/354728/
+
 class user_status:
     def __init__(self, _time_stamp, _entry_number, _user_id, _x, _y, _z, _pulse):
         self.time_stamp = _time_stamp
