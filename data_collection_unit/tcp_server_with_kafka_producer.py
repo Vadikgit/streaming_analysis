@@ -24,18 +24,18 @@ def get_user_state_from_bytes(bts : bytes)->user_status:
     r_bts_timestamp_ms = bytes(bts[0:8])
     r_bts_entry_number = bytes(bts[8:16])
     r_bts_user_id = bytes(bts[16:24])
-    r_bts_x = bytes(bts[24:32])
-    r_bts_y = bytes(bts[32:40])
-    r_bts_z = bytes(bts[40:48])
-    r_bts_pulse = bytes(bts[48:])
+    r_bts_x = bytes(bts[24:28])
+    r_bts_y = bytes(bts[28:32])
+    r_bts_z = bytes(bts[32:36])
+    r_bts_pulse = bytes(bts[36:])
 
     r_us = user_status(datetime.now(), 0, 0, 0, 0, 0, 0)
 
     r_us.time_stamp = datetime.fromtimestamp(int.from_bytes(r_bts_timestamp_ms, 'little', signed=False) / 1000.0)
     r_us.entry_number = int.from_bytes(r_bts_entry_number, 'little', signed=False)
     r_us.user_id = int.from_bytes(r_bts_user_id, 'little', signed=False)
-    r_us.x = int.from_bytes(r_bts_x, 'little', signed=True)
-    r_us.y = int.from_bytes(r_bts_y, 'little', signed=True)
+    r_us.x = int.from_bytes(r_bts_x, 'little', signed=False)
+    r_us.y = int.from_bytes(r_bts_y, 'little', signed=False)
     r_us.z = int.from_bytes(r_bts_z, 'little', signed=True)
     r_us.pulse = int.from_bytes(r_bts_pulse, 'little', signed=False)
 
@@ -45,10 +45,10 @@ def get_bytes_from_user_state(entry : user_status) -> bytes:
     bts_timestamp_ms = int(entry.time_stamp.timestamp() * 1000).to_bytes(8, 'little', signed=False)
     bts_entry_number = entry.entry_number.to_bytes(8, 'little', signed=False)
     bts_user_id = entry.user_id.to_bytes(8, 'little', signed=False)
-    bts_x = entry.x.to_bytes(8, 'little', signed=True)
-    bts_y = entry.y.to_bytes(8, 'little', signed=True)
-    bts_z = entry.z.to_bytes(8, 'little', signed=True)
-    bts_pulse = entry.pulse.to_bytes(8, 'little', signed=False)
+    bts_x = entry.x.to_bytes(4, 'little', signed=False)
+    bts_y = entry.y.to_bytes(4, 'little', signed=False)
+    bts_z = entry.z.to_bytes(4, 'little', signed=True)
+    bts_pulse = entry.pulse.to_bytes(4, 'little', signed=False)
 
     res = bytearray()
     for i in bts_timestamp_ms:
@@ -85,7 +85,7 @@ def get_user_state_from_json_string(json_string : str) -> user_status:
 
 
 
-TCP_SERVER_ADDRESS = ('192.168.0.4', 8686)
+TCP_SERVER_ADDRESS = ('192.168.0.103', 8686)
 MAX_CONNECTIONS = 20
 kafka_producer = KafkaProducer(bootstrap_servers='127.0.0.1:9092')
 
@@ -126,10 +126,29 @@ def handle_readables(readables, server):
                 # user_status_obg = get_user_state_from_bytes(data)
                 user_status_obg = get_user_state_from_json_string(data.decode())
 
-                future = kafka_producer.send('user-statuses-topic', data)
+                # future = kafka_producer.send('user-statuses-topic', data)
                 # future = kafka_producer.send('user-statuses-topic', get_bytes_from_user_state(user_status_obg))
-                future = kafka_producer.send('user' + str(user_status_obg.user_id), data)
+                
+                # pulse
+                future = kafka_producer.send(topic = 'pulse', key = user_status_obg.user_id.to_bytes(8, 'big', signed=False), value = user_status_obg.pulse.to_bytes(4, 'big', signed=False))
+                result = future.get(timeout=1)
 
+
+                # location
+                location_bytes = bytearray()
+                bts_x = user_status_obg.x.to_bytes(4, 'big', signed=False)
+                bts_y = user_status_obg.y.to_bytes(4, 'big', signed=False)
+                bts_z = user_status_obg.z.to_bytes(4, 'big', signed=True)
+    
+                for i in bts_x:
+                    location_bytes.append(i)
+                for i in bts_y:
+                    location_bytes.append(i)
+                for i in bts_z:
+                    location_bytes.append(i)
+                
+                future = kafka_producer.send(topic = 'location', key = user_status_obg.user_id.to_bytes(8, 'big', signed=False), value = location_bytes)
+               
                 result = future.get(timeout=1)
                 print("getting data: {recieved_status}".format(recieved_status=(user_status_obg.__dict__)))
 
@@ -141,8 +160,6 @@ def handle_readables(readables, server):
             else:
                 clear_resource(resource)
 
-# средний пульс в окне, перемещение за окно
-# загруженность квадрата
 def clear_resource(resource):
     if resource in OUTPUTS:
         OUTPUTS.remove(resource)

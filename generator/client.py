@@ -100,10 +100,10 @@ def get_bytes_from_user_state(entry : user_status) -> bytes:
     bts_timestamp_ms = int(entry.time_stamp.timestamp() * 1000).to_bytes(8, 'little', signed=False)
     bts_entry_number = entry.entry_number.to_bytes(8, 'little', signed=False)
     bts_user_id = entry.user_id.to_bytes(8, 'little', signed=False)
-    bts_x = entry.x.to_bytes(8, 'little', signed=True)
-    bts_y = entry.y.to_bytes(8, 'little', signed=True)
-    bts_z = entry.z.to_bytes(8, 'little', signed=True)
-    bts_pulse = entry.pulse.to_bytes(8, 'little', signed=False)
+    bts_x = entry.x.to_bytes(4, 'little', signed=False)
+    bts_y = entry.y.to_bytes(4, 'little', signed=False)
+    bts_z = entry.z.to_bytes(4, 'little', signed=True)
+    bts_pulse = entry.pulse.to_bytes(4, 'little', signed=False)
 
     res = bytearray()
     for i in bts_timestamp_ms:
@@ -148,9 +148,9 @@ else:
     user_id = data["user_id"]
 
 
-us = user_status(datetime.now(), 1, user_id, 0, 0, 0, 0)
+us = user_status(datetime.now(), 1, user_id, 200_000_000, 200_000_000, 0, 0)
 
-address_to_server = ('192.168.0.4', 8686)
+address_to_server = ('192.168.0.103', 8686)
 
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client.connect(address_to_server)
@@ -163,3 +163,4 @@ while client:
     client.send(get_json_string_from_user_state(us).encode())
     print(us.__dict__)
     sleep(interval_in_seconds)
+
