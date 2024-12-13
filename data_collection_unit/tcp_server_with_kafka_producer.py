@@ -85,7 +85,7 @@ def get_user_state_from_json_string(json_string : str) -> user_status:
 
 
 
-TCP_SERVER_ADDRESS = ('192.168.0.103', 8686)
+TCP_SERVER_ADDRESS = ('192.168.0.4', 8686)
 MAX_CONNECTIONS = 20
 kafka_producer = KafkaProducer(bootstrap_servers='127.0.0.1:9092')
 
